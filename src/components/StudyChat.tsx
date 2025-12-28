@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Image, X, Loader2 } from "lucide-react";
+import { Send, Image, X, Loader2, Brain, TrendingUp, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,8 +13,20 @@ interface ChatMessage {
   imageUrl?: string;
 }
 
+interface RealTimeAnalysis {
+  weakAreas: string[];
+  strongAreas: string[];
+  currentUnderstanding: "weak" | "average" | "good" | "excellent";
+  topicsCovered: string[];
+}
+
 interface StudyChatProps {
-  onEndStudy: (summary: { topic: string; timeSpent: number; messages: ChatMessage[] }) => void;
+  onEndStudy: (summary: { 
+    topic: string; 
+    timeSpent: number; 
+    messages: ChatMessage[];
+    analysis: RealTimeAnalysis;
+  }) => void;
   studentId?: string;
 }
 
@@ -33,6 +45,15 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [startTime] = useState(new Date());
   const [currentTopic, setCurrentTopic] = useState("");
+  const [showAnalysis, setShowAnalysis] = useState(false);
+  
+  // Real-time analysis state
+  const [analysis, setAnalysis] = useState<RealTimeAnalysis>({
+    weakAreas: [],
+    strongAreas: [],
+    currentUnderstanding: "average",
+    topicsCovered: [],
+  });
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -55,7 +76,7 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
       }));
 
       const { data, error } = await supabase.functions.invoke('study-chat', {
-        body: { messages: formattedMessages, studentId }
+        body: { messages: formattedMessages, studentId, analyzeSession: true }
       });
 
       if (error) {
@@ -69,6 +90,16 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
           description: data.error,
           variant: "destructive"
         });
+      }
+
+      // Update real-time analysis from AI response
+      if (data?.sessionAnalysis) {
+        setAnalysis(prev => ({
+          weakAreas: [...new Set([...prev.weakAreas, ...(data.sessionAnalysis.weakAreas || [])])],
+          strongAreas: [...new Set([...prev.strongAreas, ...(data.sessionAnalysis.strongAreas || [])])],
+          currentUnderstanding: data.sessionAnalysis.understanding || prev.currentUnderstanding,
+          topicsCovered: [...new Set([...prev.topicsCovered, ...(data.sessionAnalysis.topics || [])])],
+        }));
       }
 
       return data?.response || "Sorry bhai, kuch problem ho gaya. Phir se try kar!";
@@ -143,6 +174,7 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
       topic: currentTopic || "General Study",
       timeSpent: Math.max(timeSpent, 1),
       messages,
+      analysis,
     });
   };
 
@@ -150,6 +182,16 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
+    }
+  };
+
+  const getUnderstandingColor = () => {
+    switch (analysis.currentUnderstanding) {
+      case "excellent": return "text-accent";
+      case "good": return "text-primary";
+      case "average": return "text-warning";
+      case "weak": return "text-destructive";
+      default: return "text-muted-foreground";
     }
   };
 
@@ -168,10 +210,57 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
             </p>
           </div>
         </div>
-        <Button variant="destructive" size="sm" onClick={handleEndStudy}>
-          End Study
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setShowAnalysis(!showAnalysis)}
+            className="hidden sm:flex"
+          >
+            <Brain className="w-4 h-4 mr-1" />
+            Analysis
+          </Button>
+          <Button variant="destructive" size="sm" onClick={handleEndStudy}>
+            End Study
+          </Button>
+        </div>
       </div>
+
+      {/* Real-time Analysis Panel */}
+      {showAnalysis && (
+        <div className="px-4 py-3 bg-muted/50 border-b border-border space-y-2">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-muted-foreground">Understanding:</span>
+            <span className={`font-semibold capitalize ${getUnderstandingColor()}`}>
+              {analysis.currentUnderstanding}
+            </span>
+          </div>
+          {analysis.topicsCovered.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              <span className="text-xs text-muted-foreground">Topics:</span>
+              {analysis.topicsCovered.slice(0, 3).map((topic, i) => (
+                <span key={i} className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-full">
+                  {topic}
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-4 text-xs">
+            {analysis.strongAreas.length > 0 && (
+              <div className="flex items-center gap-1 text-accent">
+                <TrendingUp className="w-3 h-3" />
+                Strong: {analysis.strongAreas.slice(0, 2).join(", ")}
+              </div>
+            )}
+            {analysis.weakAreas.length > 0 && (
+              <div className="flex items-center gap-1 text-warning">
+                <AlertTriangle className="w-3 h-3" />
+                Needs work: {analysis.weakAreas.slice(0, 2).join(", ")}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">

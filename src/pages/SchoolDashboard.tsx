@@ -53,11 +53,18 @@ const SchoolDashboard = () => {
 
   const loadStudents = async () => {
     try {
-      // Get the school ID from schools table
+      const storedSchoolId = localStorage.getItem("schoolId");
+      
+      if (!storedSchoolId) {
+        setLoading(false);
+        return;
+      }
+
+      // Get the school UUID from schools table using the stored school_id
       const { data: school } = await supabase
         .from("schools")
         .select("id")
-        .eq("school_id", "ips855108")
+        .eq("school_id", storedSchoolId)
         .maybeSingle();
 
       if (!school) {
@@ -65,7 +72,7 @@ const SchoolDashboard = () => {
         return;
       }
 
-      // Get students for this school
+      // Get students ONLY for this specific school
       const { data: studentsData } = await supabase
         .from("students")
         .select("*")

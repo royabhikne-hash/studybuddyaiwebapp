@@ -101,14 +101,25 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    console.log("Starting weekly report generation...");
+    // Check if this is a single student test request
+    let body: { studentId?: string; testMode?: boolean } = {};
+    try {
+      body = await req.json();
+    } catch {
+      // No body provided, process all students
+    }
 
-    // Get all students with their study sessions from the past 7 days
+    console.log("Starting report generation...", body.testMode ? "(Test Mode)" : "");
+
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     
-    const { data: students, error: studentsError } = await supabase
-      .from("students")
-      .select("*");
+    // If single student test mode, only fetch that student
+    let studentsQuery = supabase.from("students").select("*");
+    if (body.studentId && body.testMode) {
+      studentsQuery = studentsQuery.eq("id", body.studentId);
+    }
+
+    const { data: students, error: studentsError } = await studentsQuery;
 
     if (studentsError) {
       console.error("Error fetching students:", studentsError);

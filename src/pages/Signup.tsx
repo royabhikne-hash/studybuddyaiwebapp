@@ -1,12 +1,18 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { BookOpen, ArrowLeft, Eye, EyeOff, Camera } from "lucide-react";
+import { BookOpen, ArrowLeft, Eye, EyeOff, Camera, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+
+interface School {
+  id: string;
+  name: string;
+  school_id: string;
+}
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -14,15 +20,17 @@ const Signup = () => {
   const { signUp } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  const [schools, setSchools] = useState<School[]>([]);
+  const [selectedSchoolId, setSelectedSchoolId] = useState("");
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  
   const [formData, setFormData] = useState({
-    photo: "",
     fullName: "",
     phone: "",
     parentWhatsapp: "",
     class: "",
     age: "",
     board: "CBSE" as "CBSE" | "ICSE" | "Bihar Board" | "Other",
-    schoolName: "Insight Public School, Kishanganj",
     district: "",
     state: "",
     email: "",
@@ -32,6 +40,23 @@ const Signup = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+
+  // Load schools on mount
+  useEffect(() => {
+    const loadSchools = async () => {
+      const { data } = await supabase
+        .from("schools")
+        .select("id, name, school_id")
+        .order("name");
+      if (data) {
+        setSchools(data);
+        if (data.length > 0) {
+          setSelectedSchoolId(data[0].id);
+        }
+      }
+    };
+    loadSchools();
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -50,10 +75,10 @@ const Signup = () => {
         return;
       }
       
+      setPhotoFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setPhotoPreview(reader.result as string);
-        setFormData((prev) => ({ ...prev, photo: reader.result as string }));
       };
       reader.readAsDataURL(file);
     }
@@ -62,10 +87,19 @@ const Signup = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!photoPreview) {
+    if (!photoPreview || !photoFile) {
       toast({
         title: "Photo Required",
         description: "Please upload your photo to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!selectedSchoolId) {
+      toast({
+        title: "School Required",
+        description: "Please select your school.",
         variant: "destructive",
       });
       return;
@@ -102,38 +136,49 @@ const Signup = () => {
         return;
       }
 
-      // Get the school ID
-      const { data: schoolData } = await supabase
-        .from("schools")
-        .select("id")
-        .eq("school_id", "ips855108")
-        .maybeSingle();
-
       // Wait for auth to complete and get user
       const { data: { user } } = await supabase.auth.getUser();
       
-      if (user && schoolData) {
-        // Create student profile
-        const { error: profileError } = await supabase
-          .from("students")
-          .insert({
-            user_id: user.id,
-            photo_url: formData.photo,
-            full_name: formData.fullName,
-            phone: formData.phone,
-            parent_whatsapp: formData.parentWhatsapp,
-            class: formData.class,
-            age: parseInt(formData.age),
-            board: formData.board,
-            school_id: schoolData.id,
-            district: formData.district,
-            state: formData.state,
-          });
+      if (!user) {
+        throw new Error("Failed to get user after signup");
+      }
 
-        if (profileError) {
-          console.error("Profile creation error:", profileError);
-          // Don't throw - user can still use the app
-        }
+      // Upload photo to Supabase Storage
+      const fileExt = photoFile.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('student-photos')
+        .upload(fileName, photoFile);
+
+      if (uploadError) {
+        console.error("Photo upload error:", uploadError);
+      }
+
+      // Get public URL for the uploaded photo
+      const { data: { publicUrl } } = supabase.storage
+        .from('student-photos')
+        .getPublicUrl(fileName);
+
+      // Create student profile with the selected school
+      const { error: profileError } = await supabase
+        .from("students")
+        .insert({
+          user_id: user.id,
+          photo_url: publicUrl,
+          full_name: formData.fullName,
+          phone: formData.phone,
+          parent_whatsapp: formData.parentWhatsapp,
+          class: formData.class,
+          age: parseInt(formData.age),
+          board: formData.board,
+          school_id: selectedSchoolId,
+          district: formData.district,
+          state: formData.state,
+        });
+
+      if (profileError) {
+        console.error("Profile creation error:", profileError);
       }
 
       toast({
@@ -307,16 +352,21 @@ const Signup = () => {
               </div>
 
               <div>
-                <Label htmlFor="schoolName">School *</Label>
+                <Label htmlFor="schoolId">School *</Label>
                 <select
-                  id="schoolName"
-                  name="schoolName"
+                  id="schoolId"
+                  name="schoolId"
                   className="flex h-12 w-full rounded-xl border border-input bg-background px-4 py-3 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  value={formData.schoolName}
-                  onChange={handleInputChange}
+                  value={selectedSchoolId}
+                  onChange={(e) => setSelectedSchoolId(e.target.value)}
                   required
                 >
-                  <option value="Insight Public School, Kishanganj">Insight Public School, Kishanganj</option>
+                  <option value="">Select School</option>
+                  {schools.map((school) => (
+                    <option key={school.id} value={school.id}>
+                      {school.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 

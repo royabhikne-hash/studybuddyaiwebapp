@@ -82,7 +82,7 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, studentId } = await req.json();
+    const { messages, studentId, analyzeSession } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
     if (!LOVABLE_API_KEY) {
@@ -139,9 +139,21 @@ serve(async (req) => {
     // Build personalized system prompt
     const systemPrompt = buildSystemPrompt(pastSessions, weakAreas, strongAreas);
 
+    // Add analysis instruction if requested
+    const analysisInstruction = analyzeSession ? `
+
+IMPORTANT: At the end of your response, include a JSON analysis block in this exact format:
+[ANALYSIS]{"understanding":"weak|average|good|excellent","topics":["topic1","topic2"],"weakAreas":["area1"],"strongAreas":["area1"]}[/ANALYSIS]
+
+Analyze the student's understanding based on:
+- Their questions (confused = weak, specific = good)
+- Clarity of their responses
+- Whether they're grasping concepts
+Keep topics short (2-3 words max).` : "";
+
     // Build messages array
     const chatMessages: AIMessage[] = [
-      { role: "system", content: systemPrompt },
+      { role: "system", content: systemPrompt + analysisInstruction },
     ];
 
     // Add conversation history
@@ -201,7 +213,7 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    const aiResponse = data.choices?.[0]?.message?.content;
+    let aiResponse = data.choices?.[0]?.message?.content;
 
     if (!aiResponse) {
       console.error("No response content from AI:", data);
@@ -210,9 +222,25 @@ serve(async (req) => {
 
     console.log("AI response received successfully");
 
+    // Extract analysis from response if present
+    let sessionAnalysis = null;
+    if (analyzeSession) {
+      const analysisMatch = aiResponse.match(/\[ANALYSIS\](.*?)\[\/ANALYSIS\]/s);
+      if (analysisMatch) {
+        try {
+          sessionAnalysis = JSON.parse(analysisMatch[1]);
+          // Remove analysis block from displayed response
+          aiResponse = aiResponse.replace(/\[ANALYSIS\].*?\[\/ANALYSIS\]/s, "").trim();
+        } catch (e) {
+          console.error("Failed to parse analysis:", e);
+        }
+      }
+    }
+
     return new Response(
       JSON.stringify({ 
         response: aiResponse,
+        sessionAnalysis,
         studentHistory: {
           recentTopics: pastSessions.slice(0, 5).map(s => s.topic),
           weakAreas,
