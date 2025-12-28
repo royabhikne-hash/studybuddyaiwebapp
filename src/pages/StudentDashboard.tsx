@@ -11,6 +11,8 @@ import {
   CheckCircle,
   User,
   BarChart3,
+  MessageCircle,
+  Loader2,
 } from "lucide-react";
 import StudyChat from "@/components/StudyChat";
 import { useToast } from "@/hooks/use-toast";
@@ -23,6 +25,13 @@ interface ChatMessage {
   content: string;
   timestamp: Date;
   imageUrl?: string;
+}
+
+interface RealTimeAnalysis {
+  weakAreas: string[];
+  strongAreas: string[];
+  currentUnderstanding: "weak" | "average" | "good" | "excellent";
+  topicsCovered: string[];
 }
 
 interface RecentSession {
@@ -40,6 +49,8 @@ const StudentDashboard = () => {
   const [isStudying, setIsStudying] = useState(false);
   const [userName, setUserName] = useState("Student");
   const [studentId, setStudentId] = useState<string | null>(null);
+  const [parentWhatsapp, setParentWhatsapp] = useState<string | null>(null);
+  const [sendingReport, setSendingReport] = useState(false);
   
   const [stats, setStats] = useState({
     todayStudied: false,
@@ -75,7 +86,7 @@ const StudentDashboard = () => {
       if (student) {
         setUserName(student.full_name);
         setStudentId(student.id);
-
+        setParentWhatsapp(student.parent_whatsapp);
         // Get study sessions
         const { data: sessions } = await supabase
           .from("study_sessions")
@@ -137,19 +148,38 @@ const StudentDashboard = () => {
     });
   };
 
-  const handleEndStudy = async (summary: { topic: string; timeSpent: number; messages: ChatMessage[] }) => {
+  const handleEndStudy = async (summary: { 
+    topic: string; 
+    timeSpent: number; 
+    messages: ChatMessage[];
+    analysis: RealTimeAnalysis;
+  }) => {
     setIsStudying(false);
     
     // Save session to database if we have a student ID
     if (studentId) {
       try {
+        // Map understanding level
+        const understandingMap: Record<string, "weak" | "average" | "good" | "excellent"> = {
+          weak: "weak",
+          average: "average",
+          good: "good",
+          excellent: "excellent"
+        };
+
+        // Calculate score based on understanding
+        const scoreMap = { weak: 40, average: 60, good: 75, excellent: 90 };
+        const calculatedScore = scoreMap[summary.analysis.currentUnderstanding] + Math.floor(Math.random() * 10);
+
         const { error } = await supabase.from("study_sessions").insert({
           student_id: studentId,
-          topic: summary.topic,
+          topic: summary.topic || summary.analysis.topicsCovered[0] || "General Study",
           time_spent: summary.timeSpent,
-          understanding_level: "average",
-          improvement_score: Math.floor(Math.random() * 30) + 60, // 60-90 for now
-          ai_summary: `Studied ${summary.topic} for ${summary.timeSpent} minutes with ${summary.messages.length} interactions.`,
+          understanding_level: understandingMap[summary.analysis.currentUnderstanding] || "average",
+          improvement_score: calculatedScore,
+          weak_areas: summary.analysis.weakAreas,
+          strong_areas: summary.analysis.strongAreas,
+          ai_summary: `Studied ${summary.topic} for ${summary.timeSpent} minutes. Understanding: ${summary.analysis.currentUnderstanding}. Topics covered: ${summary.analysis.topicsCovered.join(", ") || "General concepts"}.`,
         });
 
         if (error) {
@@ -167,6 +197,44 @@ const StudentDashboard = () => {
       title: "Study Session Complete! 🎉",
       description: `You studied ${summary.topic} for ${summary.timeSpent} minutes.`,
     });
+  };
+
+  const handleSendReport = async () => {
+    if (!studentId || !parentWhatsapp) {
+      toast({
+        title: "Cannot send report",
+        description: "Student profile or parent WhatsApp not found.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setSendingReport(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-weekly-report', {
+        body: { studentId, testMode: true }
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast({
+          title: "Report Sent! 📱",
+          description: `WhatsApp report sent to parent successfully.`,
+        });
+      } else {
+        throw new Error(data?.error || "Failed to send report");
+      }
+    } catch (err) {
+      console.error("Error sending report:", err);
+      toast({
+        title: "Failed to send report",
+        description: err instanceof Error ? err.message : "Please try again later.",
+        variant: "destructive"
+      });
+    } finally {
+      setSendingReport(false);
+    }
   };
 
   const handleLogout = async () => {
@@ -247,6 +315,16 @@ const StudentDashboard = () => {
             <Button variant="outline" size="lg" onClick={() => navigate("/progress")} className="ml-3">
               <BarChart3 className="w-4 h-4 mr-2" />
               View Progress
+            </Button>
+            <Button 
+              variant="secondary" 
+              size="lg" 
+              onClick={handleSendReport} 
+              disabled={sendingReport}
+              className="ml-3"
+            >
+              {sendingReport ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <MessageCircle className="w-4 h-4 mr-2" />}
+              Send Report Now
             </Button>
           </div>
         </div>
