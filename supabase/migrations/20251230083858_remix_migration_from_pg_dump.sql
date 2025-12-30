@@ -35,6 +35,16 @@ SET row_security = off;
 
 
 --
+-- Name: admin_role; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.admin_role AS ENUM (
+    'super_admin',
+    'admin'
+);
+
+
+--
 -- Name: board_type; Type: TYPE; Schema: public; Owner: -
 --
 
@@ -87,6 +97,20 @@ $$;
 SET default_table_access_method = heap;
 
 --
+-- Name: admins; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.admins (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    admin_id text NOT NULL,
+    password_hash text NOT NULL,
+    name text NOT NULL,
+    role public.admin_role DEFAULT 'admin'::public.admin_role NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: chat_messages; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -98,6 +122,44 @@ CREATE TABLE public.chat_messages (
     image_url text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT chat_messages_role_check CHECK ((role = ANY (ARRAY['user'::text, 'assistant'::text])))
+);
+
+
+--
+-- Name: parent_reports; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.parent_reports (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    student_id uuid NOT NULL,
+    report_type text DEFAULT 'weekly'::text NOT NULL,
+    report_data jsonb DEFAULT '{}'::jsonb NOT NULL,
+    pdf_url text,
+    sent_at timestamp with time zone,
+    sent_to text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by uuid,
+    created_by_type text,
+    CONSTRAINT parent_reports_created_by_type_check CHECK ((created_by_type = ANY (ARRAY['admin'::text, 'school'::text])))
+);
+
+
+--
+-- Name: quiz_attempts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.quiz_attempts (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    session_id uuid NOT NULL,
+    student_id uuid NOT NULL,
+    questions jsonb DEFAULT '[]'::jsonb NOT NULL,
+    answers jsonb DEFAULT '[]'::jsonb NOT NULL,
+    correct_count integer DEFAULT 0 NOT NULL,
+    total_questions integer DEFAULT 0 NOT NULL,
+    accuracy_percentage numeric(5,2) DEFAULT 0,
+    understanding_result text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT quiz_attempts_understanding_result_check CHECK ((understanding_result = ANY (ARRAY['strong'::text, 'partial'::text, 'weak'::text])))
 );
 
 
@@ -160,11 +222,43 @@ CREATE TABLE public.study_sessions (
 
 
 --
+-- Name: admins admins_admin_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admins
+    ADD CONSTRAINT admins_admin_id_key UNIQUE (admin_id);
+
+
+--
+-- Name: admins admins_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admins
+    ADD CONSTRAINT admins_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: chat_messages chat_messages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.chat_messages
     ADD CONSTRAINT chat_messages_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: parent_reports parent_reports_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.parent_reports
+    ADD CONSTRAINT parent_reports_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: quiz_attempts quiz_attempts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.quiz_attempts
+    ADD CONSTRAINT quiz_attempts_pkey PRIMARY KEY (id);
 
 
 --
@@ -223,6 +317,30 @@ ALTER TABLE ONLY public.chat_messages
 
 
 --
+-- Name: parent_reports parent_reports_student_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.parent_reports
+    ADD CONSTRAINT parent_reports_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id) ON DELETE CASCADE;
+
+
+--
+-- Name: quiz_attempts quiz_attempts_session_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.quiz_attempts
+    ADD CONSTRAINT quiz_attempts_session_id_fkey FOREIGN KEY (session_id) REFERENCES public.study_sessions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: quiz_attempts quiz_attempts_student_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.quiz_attempts
+    ADD CONSTRAINT quiz_attempts_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id) ON DELETE CASCADE;
+
+
+--
 -- Name: students students_school_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -236,6 +354,41 @@ ALTER TABLE ONLY public.students
 
 ALTER TABLE ONLY public.study_sessions
     ADD CONSTRAINT study_sessions_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id) ON DELETE CASCADE;
+
+
+--
+-- Name: admins Admins viewable for login; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Admins viewable for login" ON public.admins FOR SELECT USING (true);
+
+
+--
+-- Name: parent_reports Anyone can insert parent reports; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Anyone can insert parent reports" ON public.parent_reports FOR INSERT WITH CHECK (true);
+
+
+--
+-- Name: parent_reports Anyone can update parent reports; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Anyone can update parent reports" ON public.parent_reports FOR UPDATE USING (true);
+
+
+--
+-- Name: parent_reports Anyone can view parent reports; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Anyone can view parent reports" ON public.parent_reports FOR SELECT USING (true);
+
+
+--
+-- Name: quiz_attempts Anyone can view quiz attempts; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Anyone can view quiz attempts" ON public.quiz_attempts FOR SELECT USING (true);
 
 
 --
@@ -274,6 +427,15 @@ CREATE POLICY "Students can insert own messages" ON public.chat_messages FOR INS
    FROM (public.study_sessions ss
      JOIN public.students s ON ((ss.student_id = s.id)))
   WHERE (s.user_id = auth.uid()))));
+
+
+--
+-- Name: quiz_attempts Students can insert own quiz attempts; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Students can insert own quiz attempts" ON public.quiz_attempts FOR INSERT WITH CHECK ((student_id IN ( SELECT students.id
+   FROM public.students
+  WHERE (students.user_id = auth.uid()))));
 
 
 --
@@ -319,6 +481,15 @@ CREATE POLICY "Students can view own messages" ON public.chat_messages FOR SELEC
 
 
 --
+-- Name: quiz_attempts Students can view own quiz attempts; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Students can view own quiz attempts" ON public.quiz_attempts FOR SELECT USING ((student_id IN ( SELECT students.id
+   FROM public.students
+  WHERE (students.user_id = auth.uid()))));
+
+
+--
 -- Name: study_sessions Students can view own sessions; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -328,10 +499,28 @@ CREATE POLICY "Students can view own sessions" ON public.study_sessions FOR SELE
 
 
 --
+-- Name: admins; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.admins ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: chat_messages; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: parent_reports; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.parent_reports ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: quiz_attempts; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.quiz_attempts ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: schools; Type: ROW SECURITY; Schema: public; Owner: -
