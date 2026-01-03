@@ -748,64 +748,80 @@ const StudentReportModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden">
-        <DialogHeader className="p-6 pb-4 border-b border-border bg-gradient-to-r from-primary/10 to-accent/10">
-          <div className="flex items-center justify-between">
+      <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden bg-gradient-to-b from-background to-muted/20">
+        <DialogHeader className="p-6 pb-4 border-b border-border bg-gradient-to-br from-primary/5 via-accent/5 to-background relative overflow-hidden">
+          {/* Decorative background */}
+          <div className="absolute inset-0 opacity-30">
+            <div className="absolute -top-20 -right-20 w-64 h-64 bg-primary/20 rounded-full blur-3xl" />
+            <div className="absolute -bottom-10 -left-10 w-48 h-48 bg-accent/20 rounded-full blur-2xl" />
+          </div>
+          
+          <div className="flex items-center justify-between relative z-10">
             <div className="flex items-center gap-4">
               {studentPhoto ? (
-                <img
-                  src={studentPhoto}
-                  alt={studentName}
-                  className="w-16 h-16 rounded-full object-cover border-2 border-primary"
-                />
+                <div className="relative">
+                  <img
+                    src={studentPhoto}
+                    alt={studentName}
+                    className="w-20 h-20 rounded-2xl object-cover border-4 border-background shadow-lg"
+                  />
+                  <div 
+                    className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs shadow-lg"
+                    style={{ backgroundColor: gradeInfo.color }}
+                  >
+                    {gradeInfo.grade}
+                  </div>
+                </div>
               ) : (
-                <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-2xl font-bold text-primary-foreground">
-                  {studentName.charAt(0)}
+                <div className="relative">
+                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-3xl font-bold text-primary-foreground shadow-lg">
+                    {studentName.charAt(0)}
+                  </div>
+                  <div 
+                    className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs shadow-lg"
+                    style={{ backgroundColor: gradeInfo.color }}
+                  >
+                    {gradeInfo.grade}
+                  </div>
                 </div>
               )}
               <div>
-                <DialogTitle className="text-xl">{studentName}</DialogTitle>
-                <p className="text-muted-foreground">{studentClass}</p>
+                <DialogTitle className="text-2xl font-bold">{studentName}</DialogTitle>
+                <p className="text-muted-foreground font-medium">{studentClass}</p>
                 {schoolInfo && (
-                  <p className="text-xs text-muted-foreground">{schoolInfo.name}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{schoolInfo.name}</p>
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              {/* Grade Badge */}
-              <div 
-                className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg"
-                style={{ backgroundColor: gradeInfo.color }}
-              >
-                {gradeInfo.grade}
-              </div>
+            <div className="flex items-center gap-3">
               {overallTrend === "up" && (
-                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-accent/20 text-accent text-sm font-medium">
+                <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent/20 text-accent text-sm font-semibold shadow-sm">
                   <TrendingUp className="w-4 h-4" /> Improving
                 </span>
               )}
               {overallTrend === "down" && (
-                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-destructive/20 text-destructive text-sm font-medium">
+                <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-destructive/20 text-destructive text-sm font-semibold shadow-sm">
                   <TrendingDown className="w-4 h-4" /> Declining
                 </span>
               )}
               {overallTrend === "stable" && (
-                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-muted text-muted-foreground text-sm font-medium">
+                <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-muted text-muted-foreground text-sm font-semibold shadow-sm">
                   <Minus className="w-4 h-4" /> Stable
                 </span>
               )}
               <Button
-                variant="outline"
+                variant="default"
                 size="sm"
                 onClick={handleDownloadPdf}
                 disabled={downloadingPdf || loading}
+                className="rounded-xl shadow-sm"
               >
                 {downloadingPdf ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <>
                     <Download className="w-4 h-4 mr-2" />
-                    Download PDF
+                    Download
                   </>
                 )}
               </Button>
@@ -813,17 +829,18 @@ const StudentReportModal = ({
           </div>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[calc(90vh-120px)]">
+        <ScrollArea className="max-h-[calc(90vh-140px)]">
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <Loader2 className="w-10 h-10 animate-spin text-primary" />
+              <p className="text-muted-foreground">Loading student data...</p>
             </div>
           ) : (
-            <div className="p-6 space-y-6">
+            <div className="p-6 space-y-8">
               {/* Weekly Summary Stats with Class Comparison */}
               <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className="text-lg font-bold flex items-center gap-2">
                     <Calendar className="w-5 h-5 text-primary" />
                     Weekly Summary (Last 7 Days)
                   </h3>
@@ -832,7 +849,7 @@ const StudentReportModal = ({
                       variant="outline"
                       size="sm"
                       onClick={() => setShowComparison(!showComparison)}
-                      className="flex items-center gap-2"
+                      className="flex items-center gap-2 rounded-xl"
                     >
                       <Users className="w-4 h-4" />
                       {showComparison ? "Hide" : "Show"} Class Avg
@@ -840,64 +857,64 @@ const StudentReportModal = ({
                   )}
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                  <div className="edu-card p-4 text-center">
-                    <p className="text-3xl font-bold text-primary">{weeklyStats.totalSessions}</p>
-                    <p className="text-sm text-muted-foreground">Study Sessions</p>
+                  <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-2xl p-5 text-center border border-primary/20 shadow-sm">
+                    <p className="text-4xl font-bold text-primary mb-1">{weeklyStats.totalSessions}</p>
+                    <p className="text-sm text-muted-foreground font-medium">Study Sessions</p>
                     {showComparison && classAverages && (
                       <div className="mt-2 text-xs">
-                        <span className={weeklyStats.totalSessions >= classAverages.avgSessions ? "text-accent" : "text-destructive"}>
+                        <span className={`font-medium ${weeklyStats.totalSessions >= classAverages.avgSessions ? "text-accent" : "text-destructive"}`}>
                           Class Avg: {classAverages.avgSessions}
                           {weeklyStats.totalSessions >= classAverages.avgSessions ? " ↑" : " ↓"}
                         </span>
                       </div>
                     )}
                   </div>
-                  <div className="edu-card p-4 text-center">
-                    <p className="text-3xl font-bold text-accent">
+                  <div className="bg-gradient-to-br from-accent/10 to-accent/5 rounded-2xl p-5 text-center border border-accent/20 shadow-sm">
+                    <p className="text-4xl font-bold text-accent mb-1">
                       {Math.round(weeklyStats.totalTimeSpent / 60)}m
                     </p>
-                    <p className="text-sm text-muted-foreground">Time Spent</p>
+                    <p className="text-sm text-muted-foreground font-medium">Time Spent</p>
                     {showComparison && classAverages && (
                       <div className="mt-2 text-xs">
-                        <span className={weeklyStats.totalTimeSpent >= classAverages.avgTimeSpent ? "text-accent" : "text-destructive"}>
+                        <span className={`font-medium ${weeklyStats.totalTimeSpent >= classAverages.avgTimeSpent ? "text-accent" : "text-destructive"}`}>
                           Class Avg: {Math.round(classAverages.avgTimeSpent / 60)}m
                           {weeklyStats.totalTimeSpent >= classAverages.avgTimeSpent ? " ↑" : " ↓"}
                         </span>
                       </div>
                     )}
                   </div>
-                  <div className="edu-card p-4 text-center">
-                    <p className="text-3xl font-bold text-primary">{weeklyStats.totalQuizzes}</p>
-                    <p className="text-sm text-muted-foreground">Quizzes Taken</p>
+                  <div className="bg-gradient-to-br from-purple-500/10 to-purple-500/5 rounded-2xl p-5 text-center border border-purple-500/20 shadow-sm">
+                    <p className="text-4xl font-bold text-purple-500 mb-1">{weeklyStats.totalQuizzes}</p>
+                    <p className="text-sm text-muted-foreground font-medium">Quizzes Taken</p>
                     {showComparison && classAverages && (
                       <div className="mt-2 text-xs">
-                        <span className={weeklyStats.totalQuizzes >= classAverages.avgQuizzes ? "text-accent" : "text-destructive"}>
+                        <span className={`font-medium ${weeklyStats.totalQuizzes >= classAverages.avgQuizzes ? "text-accent" : "text-destructive"}`}>
                           Class Avg: {classAverages.avgQuizzes}
                           {weeklyStats.totalQuizzes >= classAverages.avgQuizzes ? " ↑" : " ↓"}
                         </span>
                       </div>
                     )}
                   </div>
-                  <div className="edu-card p-4 text-center">
-                    <p className="text-3xl font-bold text-accent">{weeklyStats.avgAccuracy}%</p>
-                    <p className="text-sm text-muted-foreground">Avg Accuracy</p>
+                  <div className="bg-gradient-to-br from-orange-500/10 to-orange-500/5 rounded-2xl p-5 text-center border border-orange-500/20 shadow-sm">
+                    <p className="text-4xl font-bold text-orange-500 mb-1">{weeklyStats.avgAccuracy}%</p>
+                    <p className="text-sm text-muted-foreground font-medium">Avg Accuracy</p>
                     {showComparison && classAverages && (
                       <div className="mt-2 text-xs">
-                        <span className={weeklyStats.avgAccuracy >= classAverages.avgAccuracy ? "text-accent" : "text-destructive"}>
+                        <span className={`font-medium ${weeklyStats.avgAccuracy >= classAverages.avgAccuracy ? "text-accent" : "text-destructive"}`}>
                           Class Avg: {classAverages.avgAccuracy}%
                           {weeklyStats.avgAccuracy >= classAverages.avgAccuracy ? " ↑" : " ↓"}
                         </span>
                       </div>
                     )}
                   </div>
-                  <div className="edu-card p-4 text-center">
+                  <div className="bg-gradient-to-br from-background to-muted/50 rounded-2xl p-5 text-center border border-border shadow-sm">
                     <div 
-                      className="w-10 h-10 rounded-full mx-auto mb-1 flex items-center justify-center text-white font-bold"
+                      className="w-14 h-14 rounded-2xl mx-auto mb-2 flex items-center justify-center text-white font-bold text-xl shadow-md"
                       style={{ backgroundColor: gradeInfo.color }}
                     >
                       {gradeInfo.grade}
                     </div>
-                    <p className="text-sm text-muted-foreground">{gradeInfo.label}</p>
+                    <p className="text-sm text-muted-foreground font-medium">{gradeInfo.label}</p>
                   </div>
                 </div>
               </div>
@@ -905,8 +922,8 @@ const StudentReportModal = ({
               {/* Performance Charts Section */}
               {sessions.length > 0 && (
                 <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <div className="flex items-center justify-between mb-5">
+                    <h3 className="text-lg font-bold flex items-center gap-2">
                       <BarChart3 className="w-5 h-5 text-primary" />
                       Performance Analytics
                     </h3>
@@ -915,7 +932,7 @@ const StudentReportModal = ({
                       size="sm"
                       onClick={handleExportCharts}
                       disabled={exportingCharts}
-                      className="flex items-center gap-2"
+                      className="flex items-center gap-2 rounded-xl"
                     >
                       {exportingCharts ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -929,7 +946,7 @@ const StudentReportModal = ({
                   </div>
                   
                   {/* Charts container with ref for export */}
-                  <div ref={chartsRef} className="bg-background p-2 rounded-lg">
+                  <div ref={chartsRef} className="bg-gradient-to-br from-background to-muted/30 p-4 rounded-2xl border border-border/50">
                     <div className="grid md:grid-cols-2 gap-6 mb-6">
                       {/* Progress Over Time Chart */}
                       <div className="edu-card p-4">

@@ -146,32 +146,64 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
     });
   };
 
-  // Text-to-Speech function
-  const speakText = (text: string, messageId: string) => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      
-      if (speakingMessageId === messageId) {
-        setSpeakingMessageId(null);
-        return;
+  // ElevenLabs Text-to-Speech function
+  const speakText = async (text: string, messageId: string) => {
+    // If already speaking this message, stop
+    if (speakingMessageId === messageId) {
+      setSpeakingMessageId(null);
+      return;
+    }
+
+    const cleanText = text.replace(/[🎉📚💪🤖👋✓✔❌⚠️🙏👍]/g, '').trim();
+    
+    if (!cleanText) return;
+    
+    setSpeakingMessageId(messageId);
+    
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ text: cleanText }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`TTS request failed: ${response.status}`);
       }
 
-      const cleanText = text.replace(/[🎉📚💪🤖👋✓✔❌⚠️🙏]/g, '').trim();
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
       
-      const utterance = new SpeechSynthesisUtterance(cleanText);
-      utterance.lang = 'hi-IN';
-      utterance.rate = 0.9;
-      utterance.pitch = 1;
+      audio.onended = () => {
+        setSpeakingMessageId(null);
+        URL.revokeObjectURL(audioUrl);
+      };
       
-      utterance.onstart = () => setSpeakingMessageId(messageId);
-      utterance.onend = () => setSpeakingMessageId(null);
-      utterance.onerror = () => setSpeakingMessageId(null);
+      audio.onerror = () => {
+        setSpeakingMessageId(null);
+        URL.revokeObjectURL(audioUrl);
+        toast({
+          title: "Audio Error",
+          description: "Could not play audio",
+          variant: "destructive"
+        });
+      };
       
-      window.speechSynthesis.speak(utterance);
-    } else {
+      await audio.play();
+    } catch (error) {
+      console.error("TTS error:", error);
+      setSpeakingMessageId(null);
       toast({
-        title: "Not Supported",
-        description: "Text-to-speech is not supported in your browser.",
+        title: "Voice Error", 
+        description: "Could not generate voice. Try again.",
         variant: "destructive"
       });
     }
@@ -361,7 +393,9 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
         body: { 
           messages: messages.map(m => ({ role: m.role, content: m.content })),
           topic: currentTopic || "General Study",
-          studentLevel: analysis.currentUnderstanding
+          studentLevel: analysis.currentUnderstanding,
+          weakAreas: analysis.weakAreas,
+          strongAreas: analysis.strongAreas
         }
       });
 
@@ -373,10 +407,16 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
         setCurrentQuestionIndex(0);
         setUserAnswers([]);
         
+        // Adaptive intro message based on student's performance
+        const hasWeakAreas = analysis.weakAreas.length > 0;
+        const introMessage = hasWeakAreas 
+          ? `Achha bhai! Maine dekha tune ${analysis.weakAreas.slice(0, 2).join(" aur ")} mein thoda struggle kiya. Koi baat nahi - ye ${data.quiz.questions.length} questions tujhe is topic samajhne mein help karenge! Ready?`
+          : `Bahut badhiya padhai ki tune! Ab dekhte hain tune kitna samjha. Ye ${data.quiz.questions.length} quick questions hain - chal shuru karte hain!`;
+        
         const quizIntro: ChatMessage = {
           id: Date.now().toString(),
           role: "assistant",
-          content: `Achha bhai! Ab dekhte hain tune kitna samjha. Main tujhse ${data.quiz.questions.length} questions poochunga jo tune abhi padha usse related hain. Ready ho ja! 💪`,
+          content: introMessage,
           timestamp: new Date(),
         };
         setMessages(prev => [...prev, quizIntro]);
