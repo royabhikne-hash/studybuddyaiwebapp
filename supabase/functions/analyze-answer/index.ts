@@ -83,7 +83,7 @@ Is the student's answer correct or equivalent to the expected answer? Consider m
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
-        max_tokens: 500,
+        max_completion_tokens: 500,
       }),
     });
 

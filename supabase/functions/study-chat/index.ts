@@ -209,7 +209,7 @@ Keep topics short (2-3 words max).` : "";
       body: JSON.stringify({
         model: "openai/gpt-5-mini",
         messages: chatMessages,
-        max_tokens: 1000,
+        max_completion_tokens: 1000,
       }),
     });
 

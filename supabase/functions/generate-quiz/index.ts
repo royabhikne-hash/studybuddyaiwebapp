@@ -110,7 +110,7 @@ Generate 12 adaptive questions that will thoroughly assess and help this student
           { role: "system", content: systemPrompt },
           { role: "user", content: `Generate quiz questions for the study session on "${topic || 'General Study'}". The student's understanding level is ${studentLevel || 'average'}.` }
         ],
-        max_tokens: 3000,
+        max_completion_tokens: 3000,
       }),
     });
 
