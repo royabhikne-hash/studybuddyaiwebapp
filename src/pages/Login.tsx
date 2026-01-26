@@ -65,13 +65,13 @@ const Login = () => {
   return (
     <div className="min-h-screen hero-gradient flex flex-col">
       {/* Header */}
-      <header className="container mx-auto py-4 px-4">
+      <header className="container mx-auto py-4 px-3 sm:px-4">
         <div className="flex items-center justify-between">
-          <Link to="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+          <Link to="/" className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm">
             <ArrowLeft className="w-4 h-4" />
-            {language === 'en' ? 'Back to Home' : 'वापस होम'}
+            <span className="hidden xs:inline">{language === 'en' ? 'Back to Home' : 'वापस होम'}</span>
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <LanguageToggle />
             <ThemeToggle />
           </div>
@@ -79,17 +79,17 @@ const Login = () => {
       </header>
 
       {/* Login Form */}
-      <main className="flex-1 container mx-auto px-4 flex items-center justify-center py-8">
+      <main className="flex-1 container mx-auto px-3 sm:px-4 flex items-center justify-center py-4 sm:py-8">
         <div className="w-full max-w-md">
-          <div className="edu-card p-6 sm:p-8">
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-4">
-                <BookOpen className="w-8 h-8 text-primary-foreground" />
+          <div className="edu-card p-4 sm:p-6 md:p-8">
+            <div className="text-center mb-6 sm:mb-8">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-primary flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                <BookOpen className="w-6 h-6 sm:w-8 sm:h-8 text-primary-foreground" />
               </div>
-              <h1 className="text-2xl font-bold">
+              <h1 className="text-xl sm:text-2xl font-bold">
                 {language === 'en' ? 'Welcome Back!' : 'वापस स्वागत है!'}
               </h1>
-              <p className="text-muted-foreground mt-2">
+              <p className="text-muted-foreground mt-1 sm:mt-2 text-sm sm:text-base">
                 {language === 'en' ? 'Login to continue studying' : 'पढ़ाई जारी रखने के लिए लॉगिन करें'}
               </p>
             </div>

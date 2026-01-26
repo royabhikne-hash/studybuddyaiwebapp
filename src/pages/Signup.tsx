@@ -207,38 +207,38 @@ const Signup = () => {
   return (
     <div className="min-h-screen hero-gradient">
       {/* Header */}
-      <header className="container mx-auto py-6 px-4">
-        <Link to="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+      <header className="container mx-auto py-4 px-3 sm:px-4">
+        <Link to="/" className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm">
           <ArrowLeft className="w-4 h-4" />
-          Back to Home
+          <span>Back to Home</span>
         </Link>
       </header>
 
       {/* Signup Form */}
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         <div className="max-w-2xl mx-auto">
-          <div className="edu-card p-8">
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-4">
-                <BookOpen className="w-8 h-8 text-primary-foreground" />
+          <div className="edu-card p-4 sm:p-6 md:p-8">
+            <div className="text-center mb-6 sm:mb-8">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-primary flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                <BookOpen className="w-6 h-6 sm:w-8 sm:h-8 text-primary-foreground" />
               </div>
-              <h1 className="text-2xl font-bold">Create Your Account</h1>
-              <p className="text-muted-foreground mt-2">Join Study Buddy AI and start improving</p>
+              <h1 className="text-xl sm:text-2xl font-bold">Create Your Account</h1>
+              <p className="text-muted-foreground mt-1 sm:mt-2 text-sm sm:text-base">Join Study Buddy AI and start improving</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
               {/* Photo Upload */}
               <div className="flex flex-col items-center">
-                <Label className="mb-3">Student Photo *</Label>
+                <Label className="mb-2 sm:mb-3 text-sm">Student Photo *</Label>
                 <div
-                  className="w-32 h-32 rounded-2xl border-2 border-dashed border-input bg-muted flex items-center justify-center cursor-pointer overflow-hidden hover:border-primary transition-colors"
+                  className="w-24 h-24 sm:w-32 sm:h-32 rounded-xl sm:rounded-2xl border-2 border-dashed border-input bg-muted flex items-center justify-center cursor-pointer overflow-hidden hover:border-primary transition-colors"
                   onClick={() => fileInputRef.current?.click()}
                 >
                   {photoPreview ? (
                     <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
                   ) : (
                     <div className="text-center text-muted-foreground">
-                      <Camera className="w-8 h-8 mx-auto mb-2" />
+                      <Camera className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-1 sm:mb-2" />
                       <span className="text-xs">Upload Photo</span>
                     </div>
                   )}
@@ -252,9 +252,9 @@ const Signup = () => {
                 />
               </div>
 
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <Label htmlFor="fullName">Full Name *</Label>
+                  <Label htmlFor="fullName" className="text-sm">Full Name *</Label>
                   <Input
                     id="fullName"
                     name="fullName"
@@ -262,10 +262,11 @@ const Signup = () => {
                     value={formData.fullName}
                     onChange={handleInputChange}
                     required
+                    className="h-10 sm:h-12 text-sm"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="phone">Phone Number *</Label>
+                  <Label htmlFor="phone" className="text-sm">Phone Number *</Label>
                   <Input
                     id="phone"
                     name="phone"
@@ -274,13 +275,14 @@ const Signup = () => {
                     value={formData.phone}
                     onChange={handleInputChange}
                     required
+                    className="h-10 sm:h-12 text-sm"
                   />
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <Label htmlFor="parentWhatsapp">Parent WhatsApp *</Label>
+                  <Label htmlFor="parentWhatsapp" className="text-sm">Parent WhatsApp *</Label>
                   <Input
                     id="parentWhatsapp"
                     name="parentWhatsapp"
@@ -289,10 +291,11 @@ const Signup = () => {
                     value={formData.parentWhatsapp}
                     onChange={handleInputChange}
                     required
+                    className="h-10 sm:h-12 text-sm"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="email">Email *</Label>
+                  <Label htmlFor="email" className="text-sm">Email *</Label>
                   <Input
                     id="email"
                     name="email"
@@ -301,67 +304,69 @@ const Signup = () => {
                     value={formData.email}
                     onChange={handleInputChange}
                     required
+                    className="h-10 sm:h-12 text-sm"
                   />
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-3 gap-2 sm:gap-4">
                 <div>
-                  <Label htmlFor="class">Class *</Label>
+                  <Label htmlFor="class" className="text-sm">Class *</Label>
                   <select
                     id="class"
                     name="class"
-                    className="flex h-12 w-full rounded-xl border border-input bg-background px-4 py-3 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="flex h-10 sm:h-12 w-full rounded-lg sm:rounded-xl border border-input bg-background px-2 sm:px-4 py-2 sm:py-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     value={formData.class}
                     onChange={handleInputChange}
                     required
                   >
-                    <option value="">Select Class</option>
+                    <option value="">Class</option>
                     {[...Array(12)].map((_, i) => (
                       <option key={i + 1} value={`Class ${i + 1}`}>
-                        Class {i + 1}
+                        {i + 1}
                       </option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <Label htmlFor="age">Age *</Label>
+                  <Label htmlFor="age" className="text-sm">Age *</Label>
                   <Input
                     id="age"
                     name="age"
                     type="number"
                     min="5"
                     max="25"
-                    placeholder="Your age"
+                    placeholder="Age"
                     value={formData.age}
                     onChange={handleInputChange}
                     required
+                    className="h-10 sm:h-12 text-sm"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="board">Board *</Label>
+                  <Label htmlFor="board" className="text-sm">Board *</Label>
                   <select
                     id="board"
                     name="board"
-                    className="flex h-12 w-full rounded-xl border border-input bg-background px-4 py-3 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="flex h-10 sm:h-12 w-full rounded-lg sm:rounded-xl border border-input bg-background px-2 sm:px-4 py-2 sm:py-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     value={formData.board}
                     onChange={handleInputChange}
                     required
                   >
                     <option value="CBSE">CBSE</option>
                     <option value="ICSE">ICSE</option>
-                    <option value="Bihar Board">Bihar Board</option>
+                    <option value="Bihar Board">Bihar</option>
                     <option value="Other">Other</option>
                   </select>
                 </div>
               </div>
 
               <div>
-                <Label htmlFor="schoolId">School *</Label>
+                <Label htmlFor="schoolId" className="text-sm">School *</Label>
                 <select
                   id="schoolId"
                   name="schoolId"
-                  className="flex h-12 w-full rounded-xl border border-input bg-background px-4 py-3 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex h-10 sm:h-12 w-full rounded-lg sm:rounded-xl border border-input bg-background px-3 sm:px-4 py-2 sm:py-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   value={selectedSchoolId}
                   onChange={(e) => setSelectedSchoolId(e.target.value)}
                   required
@@ -375,9 +380,9 @@ const Signup = () => {
                 </select>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <Label htmlFor="district">District *</Label>
+                  <Label htmlFor="district" className="text-sm">District *</Label>
                   <Input
                     id="district"
                     name="district"
@@ -385,10 +390,11 @@ const Signup = () => {
                     value={formData.district}
                     onChange={handleInputChange}
                     required
+                    className="h-10 sm:h-12 text-sm"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="state">State *</Label>
+                  <Label htmlFor="state" className="text-sm">State *</Label>
                   <Input
                     id="state"
                     name="state"
@@ -396,12 +402,13 @@ const Signup = () => {
                     value={formData.state}
                     onChange={handleInputChange}
                     required
+                    className="h-10 sm:h-12 text-sm"
                   />
                 </div>
               </div>
 
               <div>
-                <Label htmlFor="password">Password *</Label>
+                <Label htmlFor="password" className="text-sm">Password *</Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -412,13 +419,14 @@ const Signup = () => {
                     onChange={handleInputChange}
                     required
                     minLength={6}
+                    className="h-10 sm:h-12 text-sm"
                   />
                   <button
                     type="button"
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     onClick={() => setShowPassword(!showPassword)}
                   >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    {showPassword ? <EyeOff className="w-4 h-4 sm:w-5 sm:h-5" /> : <Eye className="w-4 h-4 sm:w-5 sm:h-5" />}
                   </button>
                 </div>
               </div>
@@ -429,9 +437,9 @@ const Signup = () => {
                   type="checkbox"
                   id="termsAccepted"
                   required
-                  className="mt-1 h-4 w-4 rounded border-input"
+                  className="mt-0.5 h-4 w-4 rounded border-input flex-shrink-0"
                 />
-                <label htmlFor="termsAccepted" className="text-sm text-muted-foreground">
+                <label htmlFor="termsAccepted" className="text-xs sm:text-sm text-muted-foreground">
                   I agree to the{" "}
                   <Link to="/terms" className="text-primary hover:underline font-medium" target="_blank">
                     Terms & Conditions
@@ -440,7 +448,7 @@ const Signup = () => {
                 </label>
               </div>
 
-              <Button type="submit" variant="hero" className="w-full" size="lg" disabled={isLoading}>
+              <Button type="submit" variant="hero" className="w-full text-sm sm:text-base" size="lg" disabled={isLoading}>
                 {isLoading ? "Creating Account..." : "Create Account & Start Studying"}
               </Button>
             </form>

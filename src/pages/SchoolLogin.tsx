@@ -151,26 +151,26 @@ const SchoolLogin = () => {
 
   return (
     <div className="min-h-screen hero-gradient flex flex-col">
-      <header className="container mx-auto py-6 px-4 flex justify-between items-center">
-        <Link to="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+      <header className="container mx-auto py-4 px-3 sm:px-4 flex justify-between items-center">
+        <Link to="/" className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm">
           <ArrowLeft className="w-4 h-4" />
-          {t('nav.home')}
+          <span className="hidden xs:inline">{t('nav.home')}</span>
         </Link>
         <LanguageToggle />
       </header>
 
-      <main className="flex-1 container mx-auto px-4 flex items-center justify-center py-8">
+      <main className="flex-1 container mx-auto px-3 sm:px-4 flex items-center justify-center py-4 sm:py-8">
         <div className="w-full max-w-md">
-          <div className="edu-card p-8">
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 rounded-2xl bg-accent flex items-center justify-center mx-auto mb-4">
-                <Building2 className="w-8 h-8 text-accent-foreground" />
+          <div className="edu-card p-4 sm:p-6 md:p-8">
+            <div className="text-center mb-6 sm:mb-8">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-accent flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                <Building2 className="w-6 h-6 sm:w-8 sm:h-8 text-accent-foreground" />
               </div>
-              <h1 className="text-2xl font-bold">{t('auth.schoolLogin')}</h1>
-              <p className="text-muted-foreground mt-2">Access your school dashboard</p>
+              <h1 className="text-xl sm:text-2xl font-bold">{t('auth.schoolLogin')}</h1>
+              <p className="text-muted-foreground mt-1 sm:mt-2 text-sm sm:text-base">Access your school dashboard</p>
             </div>
 
-            <div className="bg-secondary/50 border border-secondary rounded-xl p-4 mb-6">
+            <div className="bg-secondary/50 border border-secondary rounded-lg sm:rounded-xl p-3 sm:p-4 mb-4 sm:mb-6">
               <div className="flex items-start gap-3">
                 <Shield className="w-5 h-5 text-primary mt-0.5" />
                 <div className="text-sm">
