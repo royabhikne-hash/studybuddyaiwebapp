@@ -71,9 +71,9 @@ export const useNativeTTS = () => {
       .trim();
   }, []);
 
-  // Split text into chunks - larger chunks for smoother playback
-  const splitIntoChunks = useCallback((text: string, maxLength: number = 500): string[] => {
-    // For shorter text, don't chunk at all
+  // Split text into chunks - very large chunks for continuous playback
+  const splitIntoChunks = useCallback((text: string, maxLength: number = 5000): string[] => {
+    // For text under 5k, don't chunk at all - speak as single unit
     if (text.length <= maxLength) {
       return [text];
     }
@@ -219,8 +219,8 @@ export const useNativeTTS = () => {
           voice = getBestVoice();
         }
 
-        // Use larger chunks for smoother playback
-        const chunks = splitIntoChunks(cleanText, 500);
+        // Use very large chunks (5k) for continuous playback
+        const chunks = splitIntoChunks(cleanText, 5000);
         chunksRef.current = chunks;
         currentChunkIndexRef.current = 0;
 
