@@ -11,6 +11,7 @@ import VoiceInputIndicator from "@/components/VoiceInputIndicator";
 import Confetti from "@/components/Confetti";
 import TypingText from "@/components/TypingText";
 import { useNativeTTS } from "@/hooks/useNativeTTS";
+import VoiceSelector from "@/components/VoiceSelector";
 
 // Web Speech API types
 interface SpeechRecognitionEvent extends Event {
@@ -123,8 +124,16 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
   const [voiceSpeed, setVoiceSpeed] = useState(0.9);
   const [autoSpeak, setAutoSpeak] = useState(true); // Auto-speak enabled by default
 
-  // Simple Web TTS hook
-  const { speak: nativeSpeak, stop: stopNativeTTS, isSupported: ttsSupported, isSpeaking } = useNativeTTS();
+  // Simple Web TTS hook with voice selection
+  const { 
+    speak: nativeSpeak, 
+    stop: stopNativeTTS, 
+    isSupported: ttsSupported, 
+    isSpeaking,
+    getHindiVoices,
+    selectedVoiceName,
+    setSelectedVoiceName
+  } = useNativeTTS();
   
   // Quiz mode state
   const [isQuizMode, setIsQuizMode] = useState(false);
@@ -843,9 +852,20 @@ const StudyChat = ({ onEndStudy, studentId }: StudyChatProps) => {
                 <span className="text-[10px] sm:text-xs">{voiceSpeed}x</span>
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-52 sm:w-56 p-3 sm:p-4" align="end">
+            <PopoverContent className="w-64 sm:w-72 p-3 sm:p-4" align="end">
               <div className="space-y-3 sm:space-y-4">
-                <div className="space-y-2 sm:space-y-3">
+                {/* Voice Selection */}
+                <div className="space-y-2">
+                  <span className="text-xs sm:text-sm font-medium">Voice Select करें</span>
+                  <VoiceSelector
+                    voices={getHindiVoices()}
+                    selectedVoice={selectedVoiceName}
+                    onVoiceChange={setSelectedVoiceName}
+                    disabled={isSpeaking}
+                  />
+                </div>
+                
+                <div className="border-t border-border pt-2 sm:pt-3 space-y-2 sm:space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs sm:text-sm font-medium">Voice Speed</span>
                     <span className="text-xs sm:text-sm text-muted-foreground">{voiceSpeed}x</span>

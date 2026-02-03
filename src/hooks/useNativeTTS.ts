@@ -6,6 +6,7 @@ interface TTSOptions {
   rate?: number;
   pitch?: number;
   volume?: number;
+  voiceName?: string; // Allow specifying a specific voice by name
 }
 
 /**
@@ -16,6 +17,7 @@ export const useNativeTTS = () => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [selectedVoiceName, setSelectedVoiceName] = useState<string | null>(null);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   useEffect(() => {
@@ -154,7 +156,7 @@ export const useNativeTTS = () => {
   }, [availableVoices]);
 
   const speak = useCallback((options: TTSOptions): Promise<void> => {
-    const { text, rate = 0.9, pitch = 1.0, volume = 1.0 } = options;
+    const { text, rate = 0.9, pitch = 1.0, volume = 1.0, voiceName } = options;
     
     return new Promise((resolve, reject) => {
       if (!isSupported) {
@@ -179,7 +181,19 @@ export const useNativeTTS = () => {
           const utterance = new SpeechSynthesisUtterance(cleanText);
           utteranceRef.current = utterance;
           
-          const voice = getBestVoice();
+          // Use specified voice, selected voice, or auto-detect best voice
+          const targetVoiceName = voiceName || selectedVoiceName;
+          let voice: SpeechSynthesisVoice | null = null;
+          
+          if (targetVoiceName) {
+            const voices = window.speechSynthesis.getVoices();
+            voice = voices.find(v => v.name === targetVoiceName) || null;
+          }
+          
+          if (!voice) {
+            voice = getBestVoice();
+          }
+          
           if (voice) {
             utterance.voice = voice;
             utterance.lang = voice.lang;
@@ -261,6 +275,20 @@ export const useNativeTTS = () => {
     setIsSpeaking(false);
   }, []);
 
+  // Get Hindi/Indian voices for the selector
+  const getHindiVoices = useCallback((): SpeechSynthesisVoice[] => {
+    const voices = availableVoices.length > 0 
+      ? availableVoices 
+      : window.speechSynthesis.getVoices();
+    
+    // Filter Hindi and Indian English voices
+    return voices.filter(v => 
+      v.lang.startsWith('hi') || 
+      v.lang === 'en-IN' || 
+      v.lang.startsWith('en')
+    );
+  }, [availableVoices]);
+
   return {
     speak,
     stop,
@@ -269,6 +297,9 @@ export const useNativeTTS = () => {
     isNative: false,
     availableVoices,
     sanitizeText,
+    selectedVoiceName,
+    setSelectedVoiceName,
+    getHindiVoices,
   };
 };
 
