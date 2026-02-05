@@ -11,6 +11,7 @@ import {
   Plus,
   Search,
   TrendingUp,
+  Send,
   FileText,
   Loader2,
   Eye,
@@ -533,6 +534,45 @@ const AdminDashboard = () => {
      }
    };
 
+  const handleSendReport = async (studentId: string, parentWhatsapp: string) => {
+    setSendingReportFor(studentId);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-weekly-report", {
+        body: { studentId, sendWhatsApp: true },
+      });
+
+      if (error) throw error;
+
+      if (data?.success && data?.reports?.[0]?.sent) {
+        await supabase.from("parent_reports").insert({
+          student_id: studentId,
+          report_type: "manual",
+          report_data: data.reports[0].reportData || {},
+          sent_at: new Date().toISOString(),
+          sent_to: parentWhatsapp,
+          created_by: localStorage.getItem("adminId"),
+          created_by_type: "admin",
+        });
+
+        toast({
+          title: "Report Sent!",
+          description: `WhatsApp report sent to ${parentWhatsapp}`,
+        });
+      } else {
+        throw new Error(data?.reports?.[0]?.sent === false ? "WhatsApp delivery failed" : "Failed to send report");
+      }
+    } catch (error) {
+      console.error("Error sending report:", error);
+      toast({
+        title: "Failed to send report",
+        description: error instanceof Error ? error.message : "Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingReportFor(null);
+    }
+  };
+
   const handleViewStudentReport = (student: Student) => {
     setSelectedStudent(student);
     setShowReportModal(true);
@@ -549,7 +589,7 @@ const AdminDashboard = () => {
 
     try {
       const { data, error } = await supabase.functions.invoke("send-weekly-report", {
-        body: { studentId: student.id },
+        body: { studentId: student.id, previewOnly: true },
       });
 
       if (error) throw error;
@@ -569,6 +609,15 @@ const AdminDashboard = () => {
       });
       setReportPreviewDialog(null);
     }
+  };
+
+  const handleConfirmSendReport = async () => {
+    if (!reportPreviewDialog?.student) return;
+    
+    const student = reportPreviewDialog.student;
+    setReportPreviewDialog(null);
+    
+    await handleSendReport(student.id, student.parent_whatsapp);
   };
 
   const handleLogout = () => {
@@ -1227,7 +1276,7 @@ const AdminDashboard = () => {
                     ) : (
                       <Eye className="w-4 h-4 mr-2" />
                     )}
-                    View Analytics
+                    Preview & Send
                   </Button>
                 </div>
               ))}
@@ -1513,9 +1562,22 @@ const AdminDashboard = () => {
 
               <DialogFooter className="gap-2 pt-4">
                 <Button
+                  variant="outline"
                   onClick={() => setReportPreviewDialog(null)}
                 >
-                  Close
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleConfirmSendReport}
+                  disabled={sendingReportFor === reportPreviewDialog.student?.id}
+                  className="bg-[#25D366] hover:bg-[#20BD5A] text-white"
+                >
+                  {sendingReportFor === reportPreviewDialog.student?.id ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4 mr-2" />
+                  )}
+                  Send to WhatsApp
                 </Button>
               </DialogFooter>
             </div>

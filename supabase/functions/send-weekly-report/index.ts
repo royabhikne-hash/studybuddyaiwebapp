@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -65,6 +66,87 @@ const calculateGrade = (avgScore: number, avgAccuracy: number, sessionCount: num
   return { grade: "D", label: "Needs Improvement" };
 };
 
+const sendWhatsAppMessage = async (to: string, message: string): Promise<boolean> => {
+  const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
+  const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
+  const fromNumber = Deno.env.get("TWILIO_WHATSAPP_FROM");
+
+  if (!accountSid || !authToken || !fromNumber) {
+    console.error("Twilio credentials not configured");
+    return false;
+  }
+
+  let formattedTo = to.replace(/\D/g, '');
+  if (!formattedTo.startsWith('91')) {
+    formattedTo = '91' + formattedTo;
+  }
+
+  try {
+    const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
+    const auth = base64Encode(`${accountSid}:${authToken}`);
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        From: `whatsapp:${fromNumber}`,
+        To: `whatsapp:+${formattedTo}`,
+        Body: message,
+      }).toString(),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error("Twilio error:", response.status, errorData);
+      return false;
+    }
+
+    console.log(`WhatsApp sent successfully to ${formattedTo}`);
+    return true;
+  } catch (error) {
+    console.error("Error sending WhatsApp:", error);
+    return false;
+  }
+};
+
+const generateWhatsAppMessage = (report: DetailedReport): string => {
+  const trendEmoji = report.trend === "improving" ? "📈" : report.trend === "declining" ? "📉" : "➡️";
+  
+  let message = `🎓 *${report.studentName} - Weekly Report*
+━━━━━━━━━━━━━━━━━━━━
+🏫 ${report.schoolName} | 📚 ${report.studentClass}
+
+🏆 *Grade: ${report.grade}* (${report.gradeLabel})
+${trendEmoji} Trend: ${report.trend}
+
+📊 *This Week:*
+• Sessions: ${report.totalSessions}
+• Study Time: ${Math.floor(report.totalMinutes / 60)}h ${report.totalMinutes % 60}m
+• Quiz Accuracy: ${report.avgAccuracy}%
+• Days Studied: ${report.daysStudied}/7
+• Streak: ${report.currentStreak} days 🔥`;
+
+  if (report.strongAreas.length > 0) {
+    message += `\n\n✅ *Strong:* ${report.strongAreas.slice(0, 3).join(', ')}`;
+  }
+  
+  if (report.weakAreas.length > 0) {
+    message += `\n⚠️ *Focus:* ${report.weakAreas.slice(0, 3).join(', ')}`;
+  }
+
+  if (report.recommendations.length > 0) {
+    message += `\n\n💡 *Tips:*\n${report.recommendations.slice(0, 3).map(r => `• ${r}`).join('\n')}`;
+  }
+
+  message += `\n\n━━━━━━━━━━━━━━━━━━━━
+📱 Study Buddy AI`;
+
+  return message;
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -75,14 +157,14 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    let body: { studentId?: string } = {};
+    let body: { studentId?: string; sendWhatsApp?: boolean; previewOnly?: boolean } = {};
     try {
       body = await req.json();
     } catch {
       // No body provided
     }
 
-    console.log("Starting report generation (Preview Only)...");
+    console.log("Starting report generation...", body.previewOnly ? "(Preview)" : body.sendWhatsApp ? "(Send)" : "");
 
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     
@@ -100,7 +182,7 @@ serve(async (req) => {
 
     console.log(`Found ${students?.length || 0} students`);
 
-    const reports: { studentName: string; reportData: DetailedReport }[] = [];
+    const reports: { studentName: string; reportData: DetailedReport; sent?: boolean }[] = [];
 
     for (const student of students || []) {
       const { data: sessions } = await supabase
@@ -260,6 +342,14 @@ serve(async (req) => {
       };
       
       reports.push({ studentName: student.full_name, reportData: report });
+      
+      // Send WhatsApp if requested
+      if (body.sendWhatsApp && !body.previewOnly) {
+        const message = generateWhatsAppMessage(report);
+        const sent = await sendWhatsAppMessage(student.parent_whatsapp, message);
+        reports[reports.length - 1].sent = sent;
+        console.log(`WhatsApp for ${student.full_name}: ${sent ? 'sent' : 'failed'}`);
+      }
     }
 
     console.log("Report generation completed:", reports.map(r => r.studentName));
