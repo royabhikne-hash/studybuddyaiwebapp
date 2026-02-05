@@ -26,6 +26,7 @@ import {
   AlertTriangle,
   Database,
   Trophy,
+   Key,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -135,6 +136,17 @@ const AdminDashboard = () => {
   const [seedingSchools, setSeedingSchools] = useState(false);
   const [showSeedDialog, setShowSeedDialog] = useState(false);
   const [seededSchools, setSeededSchools] = useState<{ name: string; schoolId: string; password: string }[]>([]);
+
+   // School password reset state
+   const [schoolPasswordDialog, setSchoolPasswordDialog] = useState<{
+     open: boolean;
+     schoolId: string;
+     schoolName: string;
+   } | null>(null);
+   const [newSchoolPassword, setNewSchoolPassword] = useState("");
+   const [showNewSchoolPassword, setShowNewSchoolPassword] = useState(false);
+   const [resettingSchoolPassword, setResettingSchoolPassword] = useState(false);
+   const [generatedSchoolPassword, setGeneratedSchoolPassword] = useState<string | null>(null);
 
   // Debounced search
   const debouncedSearch = useDebounce(searchQuery, 300);
@@ -473,6 +485,45 @@ const AdminDashboard = () => {
       setConfirmDialog(null);
     }
   };
+
+   const handleResetSchoolPassword = async () => {
+     if (!schoolPasswordDialog) return;
+
+     setResettingSchoolPassword(true);
+     try {
+       const adminId = localStorage.getItem("adminId");
+       const sessionToken = localStorage.getItem("adminSessionToken");
+
+       const { data, error } = await supabase.functions.invoke("secure-auth", {
+         body: {
+           action: "force_password_reset",
+           adminCredentials: { adminId, sessionToken },
+           schoolData: { schoolId: schoolPasswordDialog.schoolId },
+         },
+       });
+
+       if (error || data?.error) {
+         throw error || new Error(data.error);
+       }
+
+       if (data?.success && data?.newPassword) {
+         setGeneratedSchoolPassword(data.newPassword);
+         toast({
+           title: "Password Reset Successfully!",
+           description: `New password generated for ${schoolPasswordDialog.schoolName}`,
+         });
+       }
+     } catch (error) {
+       console.error("Error resetting school password:", error);
+       toast({
+         title: "Error",
+         description: "Failed to reset password. Please try again.",
+         variant: "destructive",
+       });
+     } finally {
+       setResettingSchoolPassword(false);
+     }
+   };
 
   const handleSendReport = async (studentId: string, parentWhatsapp: string) => {
     setSendingReportFor(studentId);
@@ -924,6 +975,25 @@ const AdminDashboard = () => {
                       >
                         <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
                       </Button>
+
+                       {/* Password Reset */}
+                       <Button
+                         variant="outline"
+                         size="sm"
+                         onClick={() => {
+                           setSchoolPasswordDialog({
+                             open: true,
+                             schoolId: school.id,
+                             schoolName: school.name,
+                           });
+                           setGeneratedSchoolPassword(null);
+                         }}
+                         disabled={actionLoading === school.id}
+                         className="text-primary hover:bg-primary/10 h-7 sm:h-8 px-2 sm:px-3"
+                         title="Reset Password"
+                       >
+                         <Key className="w-3 h-3 sm:w-4 sm:h-4" />
+                       </Button>
                     </div>
                   </div>
                 </div>
@@ -1229,6 +1299,103 @@ const AdminDashboard = () => {
           userType="admin"
         />
       )}
+
+       {/* School Password Reset Dialog */}
+       <Dialog 
+         open={schoolPasswordDialog?.open} 
+         onOpenChange={(open) => {
+           if (!open) {
+             setSchoolPasswordDialog(null);
+             setNewSchoolPassword("");
+             setGeneratedSchoolPassword(null);
+           }
+         }}
+       >
+         <DialogContent className="max-w-md">
+           <DialogHeader>
+             <DialogTitle className="flex items-center gap-2">
+               <Key className="w-5 h-5 text-primary" />
+               Reset School Password
+             </DialogTitle>
+           </DialogHeader>
+           
+           {generatedSchoolPassword ? (
+             <div className="space-y-4">
+               <div className="bg-accent/10 border border-accent/20 rounded-xl p-4">
+                 <p className="font-semibold text-accent mb-2">Password Reset Successfully!</p>
+                 <p className="text-sm text-muted-foreground mb-4">
+                   Share these new credentials with <span className="font-medium">{schoolPasswordDialog?.schoolName}</span>:
+                 </p>
+                 <div className="space-y-2 bg-background rounded-lg p-3">
+                   <div className="flex justify-between items-center">
+                     <span className="text-sm text-muted-foreground">New Password:</span>
+                     <div className="flex items-center gap-2">
+                       <span className="font-mono font-bold text-sm">{generatedSchoolPassword}</span>
+                       <Button
+                         variant="ghost"
+                         size="sm"
+                         className="h-6 w-6 p-0"
+                         onClick={() => {
+                           navigator.clipboard.writeText(generatedSchoolPassword);
+                           toast({
+                             title: "Copied!",
+                             description: "Password copied to clipboard",
+                           });
+                         }}
+                       >
+                         📋
+                       </Button>
+                     </div>
+                   </div>
+                 </div>
+                 <p className="text-xs text-muted-foreground mt-3">
+                   ⚠️ School will be required to change this password on next login.
+                 </p>
+               </div>
+               <Button
+                 className="w-full"
+                 onClick={() => {
+                   setSchoolPasswordDialog(null);
+                   setGeneratedSchoolPassword(null);
+                 }}
+               >
+                 Done
+               </Button>
+             </div>
+           ) : (
+             <div className="space-y-4">
+               <p className="text-sm text-muted-foreground">
+                 This will generate a new secure password for <span className="font-medium">{schoolPasswordDialog?.schoolName}</span>. 
+                 All existing sessions will be revoked.
+               </p>
+               <DialogFooter>
+                 <Button
+                   variant="outline"
+                   onClick={() => setSchoolPasswordDialog(null)}
+                 >
+                   Cancel
+                 </Button>
+                 <Button
+                   onClick={handleResetSchoolPassword}
+                   disabled={resettingSchoolPassword}
+                 >
+                   {resettingSchoolPassword ? (
+                     <>
+                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                       Generating...
+                     </>
+                   ) : (
+                     <>
+                       <Key className="w-4 h-4 mr-2" />
+                       Generate New Password
+                     </>
+                   )}
+                 </Button>
+               </DialogFooter>
+             </div>
+           )}
+         </DialogContent>
+       </Dialog>
     </div>
   );
 };
