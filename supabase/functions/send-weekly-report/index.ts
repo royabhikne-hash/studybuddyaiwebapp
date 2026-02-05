@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -54,6 +55,223 @@ interface DetailedReport {
   recommendations: string[];
   parentTips: string[];
 }
+
+const generatePDFContent = (report: DetailedReport): string => {
+  const dateRange = `${new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN')} - ${new Date().toLocaleDateString('en-IN')}`;
+  const trendText = report.trend === "improving" ? "📈 Improving" : report.trend === "declining" ? "📉 Declining" : "➡️ Stable";
+  
+  let html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+    .container { max-width: 800px; margin: 0 auto; background: white; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); overflow: hidden; }
+    .header { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 30px; text-align: center; }
+    .header h1 { margin: 0 0 10px 0; font-size: 28px; }
+    .header .subtitle { opacity: 0.9; font-size: 16px; }
+    .grade-badge { display: inline-block; background: rgba(255,255,255,0.2); padding: 15px 30px; border-radius: 12px; margin-top: 15px; }
+    .grade-badge .grade { font-size: 48px; font-weight: bold; }
+    .grade-badge .label { font-size: 14px; opacity: 0.9; }
+    .content { padding: 30px; }
+    .section { margin-bottom: 25px; }
+    .section-title { font-size: 18px; font-weight: 600; color: #374151; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 25px; }
+    .stat-card { background: #f8fafc; padding: 20px; border-radius: 12px; text-align: center; border: 1px solid #e2e8f0; }
+    .stat-value { font-size: 28px; font-weight: bold; color: #6366f1; }
+    .stat-label { font-size: 12px; color: #64748b; margin-top: 5px; }
+    .table { width: 100%; border-collapse: collapse; }
+    .table th { background: #f1f5f9; padding: 12px; text-align: left; font-size: 13px; color: #475569; }
+    .table td { padding: 12px; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
+    .tag { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; margin: 3px; }
+    .tag-strong { background: #dcfce7; color: #166534; }
+    .tag-weak { background: #fef3c7; color: #92400e; }
+    .footer { background: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0; }
+    .footer-text { color: #64748b; font-size: 12px; }
+    .trend { padding: 5px 15px; border-radius: 20px; font-size: 14px; }
+    .trend-up { background: #dcfce7; color: #166534; }
+    .trend-down { background: #fee2e2; color: #991b1b; }
+    .trend-stable { background: #e0e7ff; color: #3730a3; }
+    .daily-row { display: flex; justify-content: space-between; padding: 10px; border-radius: 8px; margin: 5px 0; }
+    .daily-active { background: #dcfce7; }
+    .daily-inactive { background: #f1f5f9; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📚 ${report.studentName}</h1>
+      <div class="subtitle">Weekly Progress Report • ${report.studentClass} • ${report.schoolName}</div>
+      <div class="subtitle">${dateRange}</div>
+      <div class="grade-badge">
+        <div class="grade">${report.grade}</div>
+        <div class="label">${report.gradeLabel}</div>
+      </div>
+    </div>
+    
+    <div class="content">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value">${report.totalSessions}</div>
+          <div class="stat-label">Total Sessions</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${Math.floor(report.totalMinutes / 60)}h ${report.totalMinutes % 60}m</div>
+          <div class="stat-label">Study Time</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${report.avgAccuracy}%</div>
+          <div class="stat-label">Quiz Accuracy</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${report.daysStudied}/7</div>
+          <div class="stat-label">Days Studied</div>
+        </div>
+      </div>
+      
+      <div class="section">
+        <div class="section-title">📊 Performance Trend 
+          <span class="trend ${report.trend === 'improving' ? 'trend-up' : report.trend === 'declining' ? 'trend-down' : 'trend-stable'}">${trendText}</span>
+        </div>
+        <div style="display: flex; gap: 20px;">
+          <div style="flex: 1;">
+            <strong>Average Score:</strong> ${report.avgScore}%
+          </div>
+          <div style="flex: 1;">
+            <strong>Consistency:</strong> ${report.studyConsistency}%
+          </div>
+          <div style="flex: 1;">
+            <strong>Current Streak:</strong> ${report.currentStreak} days 🔥
+          </div>
+        </div>
+      </div>
+      
+      <div class="section">
+        <div class="section-title">📅 Daily Breakdown</div>
+        ${report.dailyBreakdown.map(day => `
+          <div class="daily-row ${day.sessions > 0 ? 'daily-active' : 'daily-inactive'}">
+            <span>${day.sessions > 0 ? '✅' : '❌'} ${day.day} (${day.date})</span>
+            <span>${day.sessions} sessions • ${day.timeSpent}min • ${day.quizzes} quizzes</span>
+          </div>
+        `).join('')}
+      </div>
+      
+      ${report.subjectsStudied.length > 0 ? `
+      <div class="section">
+        <div class="section-title">📖 Subjects Studied</div>
+        <p>${report.subjectsStudied.join(', ')}</p>
+      </div>
+      ` : ''}
+      
+      ${report.topicsCovered.length > 0 ? `
+      <div class="section">
+        <div class="section-title">📝 Topics Covered</div>
+        <table class="table">
+          <thead>
+            <tr><th>Topic</th><th>Sessions</th><th>Avg Score</th></tr>
+          </thead>
+          <tbody>
+            ${report.topicsCovered.slice(0, 10).map(t => `
+              <tr>
+                <td>${t.topic}</td>
+                <td>${t.sessions}x</td>
+                <td>${t.avgScore >= 70 ? '🌟' : t.avgScore >= 50 ? '👍' : '📚'} ${t.avgScore}%</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+      ` : ''}
+      
+      <div class="section">
+        <div class="section-title">✅ Strong Areas</div>
+        <div>${report.strongAreas.length > 0 ? report.strongAreas.slice(0, 6).map(s => `<span class="tag tag-strong">🌟 ${s}</span>`).join('') : '<span style="color:#64748b;">Keep studying to identify strengths!</span>'}</div>
+      </div>
+      
+      <div class="section">
+        <div class="section-title">⚠️ Needs Improvement</div>
+        <div>${report.weakAreas.length > 0 ? report.weakAreas.slice(0, 6).map(s => `<span class="tag tag-weak">📚 ${s}</span>`).join('') : '<span style="color:#64748b;">Great job! No major weak areas.</span>'}</div>
+      </div>
+      
+      ${report.totalQuizzes > 0 ? `
+      <div class="section">
+        <div class="section-title">🧠 Quiz Performance</div>
+        <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
+          <div class="stat-card">
+            <div class="stat-value">${report.totalQuizzes}</div>
+            <div class="stat-label">Total Quizzes</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">${report.quizzes.filter(q => (q.accuracy_percentage || 0) >= 50).length}</div>
+            <div class="stat-label">Passed</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">${report.quizzes.reduce((acc, q) => acc + q.correct_count, 0)}/${report.quizzes.reduce((acc, q) => acc + q.total_questions, 0)}</div>
+            <div class="stat-label">Questions Correct</div>
+          </div>
+        </div>
+      </div>
+      ` : ''}
+      
+      <div class="section">
+        <div class="section-title">💡 AI Recommendations</div>
+        <ul style="margin: 0; padding-left: 20px;">
+          ${report.recommendations.map(r => `<li style="margin: 8px 0;">${r}</li>`).join('')}
+        </ul>
+      </div>
+      
+      <div class="section">
+        <div class="section-title">👨‍👩‍👧 Parent Tips</div>
+        <ul style="margin: 0; padding-left: 20px;">
+          ${report.parentTips.map(t => `<li style="margin: 8px 0;">${t}</li>`).join('')}
+        </ul>
+      </div>
+    </div>
+    
+    <div class="footer">
+      <div class="footer-text">📱 Study Buddy AI • Powered by AI-driven learning analytics</div>
+      <div class="footer-text">Generated on ${new Date().toLocaleString('en-IN')}</div>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  return html;
+};
+
+const uploadPDFToStorage = async (
+  supabase: any,
+  report: DetailedReport
+): Promise<string | null> => {
+  try {
+    const htmlContent = generatePDFContent(report);
+    const fileName = `report_${report.studentId}_${Date.now()}.html`;
+    
+    // Upload HTML to storage as a viewable report
+    const { data, error } = await supabase.storage
+      .from('student-photos')
+      .upload(`reports/${fileName}`, new Blob([htmlContent], { type: 'text/html' }), {
+        contentType: 'text/html',
+        upsert: true,
+      });
+
+    if (error) {
+      console.error("Error uploading report:", error);
+      return null;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from('student-photos')
+      .getPublicUrl(`reports/${fileName}`);
+
+    console.log("Report uploaded:", urlData.publicUrl);
+    return urlData.publicUrl;
+  } catch (error) {
+    console.error("PDF upload error:", error);
+    return null;
+  }
+};
 
 const calculateGrade = (avgScore: number, avgAccuracy: number, sessionCount: number): { grade: string; label: string } => {
   const score = (avgScore * 0.4) + (avgAccuracy * 0.3) + (sessionCount * 5 * 0.3);
@@ -177,7 +395,7 @@ _${new Date().toLocaleString('hi-IN')}_`;
   return message;
 };
 
-const sendWhatsAppMessage = async (to: string, message: string): Promise<boolean> => {
+const sendWhatsAppMessage = async (to: string, message: string, mediaUrl?: string): Promise<boolean> => {
   const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
   const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
   const fromNumber = Deno.env.get("TWILIO_WHATSAPP_FROM");
@@ -205,6 +423,7 @@ const sendWhatsAppMessage = async (to: string, message: string): Promise<boolean
         From: `whatsapp:${fromNumber}`,
         To: `whatsapp:+${formattedTo}`,
         Body: message,
+        ...(mediaUrl ? { MediaUrl: mediaUrl } : {}),
       }),
     });
 
@@ -417,7 +636,17 @@ serve(async (req) => {
       };
 
       const messageContent = generateDetailedWhatsAppMessage(report);
-      const sent = await sendWhatsAppMessage(student.parent_whatsapp, messageContent);
+      
+      // Upload PDF/HTML report to storage
+      const pdfUrl = await uploadPDFToStorage(supabase, report);
+      
+      // Add PDF link to message
+      let fullMessage = messageContent;
+      if (pdfUrl) {
+        fullMessage += `\n\n📄 *VIEW FULL REPORT:*\n${pdfUrl}`;
+      }
+      
+      const sent = await sendWhatsAppMessage(student.parent_whatsapp, fullMessage, pdfUrl || undefined);
       
       reports.push({ studentName: student.full_name, sent, reportData: report });
       

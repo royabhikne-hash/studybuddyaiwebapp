@@ -1213,6 +1213,20 @@ const AdminDashboard = () => {
                     <ClipboardList className="w-4 h-4 mr-2" />
                     View Report
                   </Button>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => handleSendReport(student.id, student.parent_whatsapp)}
+                    disabled={sendingReportFor === student.id}
+                    className="bg-[#25D366] hover:bg-[#20BD5A] text-white"
+                  >
+                    {sendingReportFor === student.id ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4 mr-2" />
+                    )}
+                    Send Report
+                  </Button>
                 </div>
               ))}
               {filteredStudents.filter(s => !s.is_banned).length === 0 && (
