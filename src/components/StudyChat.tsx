@@ -324,6 +324,9 @@ const StudyChat = ({ onEndStudy, studentId, studentClass = "10", studentBoard = 
     });
   };
 
+  // Track current speak generation to avoid stale promises overwriting state
+  const speakGenerationRef = useRef(0);
+
   // Robust TTS function with error handling
   const speakText = useCallback(async (text: string, messageId: string, isQuizQuestion: boolean = false) => {
     // Check TTS support
@@ -339,8 +342,12 @@ const StudyChat = ({ onEndStudy, studentId, studentClass = "10", studentBoard = 
       return;
     }
 
-    // Stop any ongoing speech first
+    // Stop any ongoing speech first and wait for it to fully cancel
     stopNativeTTS();
+    await new Promise(r => setTimeout(r, 150));
+    
+    // Increment generation to invalidate any previous speak promises
+    const thisGeneration = ++speakGenerationRef.current;
     
     setSpeakingMessageId(messageId);
     
@@ -354,7 +361,6 @@ const StudyChat = ({ onEndStudy, studentId, studentClass = "10", studentBoard = 
       });
     } catch (error) {
       console.error("TTS error:", error);
-      // Show toast only if it's a user-initiated action (not auto-speak)
       if (!autoSpeak) {
         toast({
           title: "Voice Error",
@@ -364,7 +370,10 @@ const StudyChat = ({ onEndStudy, studentId, studentClass = "10", studentBoard = 
         });
       }
     } finally {
-      setSpeakingMessageId(null);
+      // Only clear speakingMessageId if this is still the active generation
+      if (speakGenerationRef.current === thisGeneration) {
+        setSpeakingMessageId(null);
+      }
     }
   }, [ttsSupported, speakingMessageId, voiceSpeed, nativeSpeak, stopNativeTTS, autoSpeak, toast]);
 
@@ -501,6 +510,12 @@ const StudyChat = ({ onEndStudy, studentId, studentClass = "10", studentBoard = 
 
   const handleSendMessage = async () => {
     if (!inputValue.trim() && !selectedImage) return;
+
+    // Stop any ongoing TTS immediately before processing new message
+    if (isSpeaking || speakingMessageId) {
+      stopNativeTTS();
+      setSpeakingMessageId(null);
+    }
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),

@@ -225,17 +225,18 @@ export const useNativeTTS = () => {
         return;
       }
 
-       // Cancel any ongoing speech
+      // Cancel any ongoing speech
       window.speechSynthesis.cancel();
       if (heartbeatRef.current) {
         clearInterval(heartbeatRef.current);
         heartbeatRef.current = null;
       }
       
+      // Reset cancelled flag AFTER cancel to allow new speech
       isCancelledRef.current = false;
       
-       // Small delay to ensure cancel completes (WebView needs a bit more)
-       await new Promise(r => setTimeout(r, isWebViewRef.current ? 140 : 60));
+      // Delay to ensure cancel completes (WebView needs a bit more)
+      await new Promise(r => setTimeout(r, isWebViewRef.current ? 140 : 80));
 
       try {
         // Get voice
